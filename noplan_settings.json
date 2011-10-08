@@ -1,9 +1,21 @@
 {
-    "id": "test1",
-    "name": "Test One",
-    "description": "Test One Description goes here.",
-    "db": {
-        "url": "127.0.0.1",
-        "port": 5984
-    }
+    "server": {
+        "host": "127.0.0.1",
+        "port": 1337
+    },
+    "plans": [
+        {
+            "id": "test1",
+            "name": "Test One",
+            "locales": [
+                "en_CA"
+            ],
+            "urlPath": "test1",
+            "description": "Test One Description goes here.",
+            "db": {
+                "url": "127.0.0.1",
+                "port": 5984
+            }
+        }
+    ]
 }

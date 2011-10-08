@@ -8,25 +8,27 @@ function Plan(pData) {
     this.db = new (cradle.Connection)(pData.db.url, pData.db.port).database(this.id);
     this.locales = pData.locales ? pData.locales.slice(0) : ['en_CA'];
     this.locale = this.locales[0];
+    this.urlPath = pData.urlPath || pData.id;
 }
 
 Plan.prototype.load = function(pOnSuccess, pOnError) {
-    var db = this.db;
+    var self = this,
+        db = self.db;
     db.exists(function(pError, pExists) {
         if (pError) {
             console.error('An error occurred while checking if the noplan database exists', pError);
-            if (pOnError) pOnError();
+            if (pOnError) pOnError(self, pError);
         } else if (!pExists) {
-            console.log('The database does not yet exist. Creating...');
+            console.log('The database for ' + self.name + ' does not yet exist. Creating...');
             db.create(function(err, res) {
-                if (err && pOnError) pOnError(err);
+                if (err && pOnError) pOnError(self, err);
                 else {
-                    console.log('Created.');
-                    initializeDatabase(db, pOnSuccess, pOnError);
+                    console.log('Created database for ' + self.name + '.');
+                    initializeDatabase(self, pOnSuccess, pOnError);
                 }
             });
         } else {
-            if (pOnSuccess) pOnSuccess();
+            if (pOnSuccess) pOnSuccess(self);
         }
     });
     return this;
@@ -201,10 +203,10 @@ PlanNode.prototype.remove = function(pOnSuccess, pOnError) {
     });
 };
 
-function initializeDatabase(pDb, pOnSuccess, pOnError) {
-    console.log('Initializing database...');
+function initializeDatabase(pPlan, pOnSuccess, pOnError) {
+    console.log('Initializing database for ' + pPlan.name + '...');
 
-    pDb.save('_design/nodes', {
+    pPlan.db.save('_design/nodes', {
         all: {
             map: function(doc) {
                 emit(doc._id, {_id: doc._id});
@@ -251,9 +253,9 @@ function initializeDatabase(pDb, pOnSuccess, pOnError) {
             }
         }
     }, function(err, res) {
-        if (err && pOnError) pOnError(err);
+        if (err && pOnError) pOnError(pPlan, err);
         else if (!err) {
-            if (pOnSuccess) pOnSuccess();
+            if (pOnSuccess) pOnSuccess(pPlan);
         }
     });
 }
