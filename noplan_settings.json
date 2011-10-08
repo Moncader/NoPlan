@@ -1,0 +1,9 @@
+{
+    "id": "test1",
+    "name": "Test One",
+    "description": "Test One Description goes here.",
+    "db": {
+        "url": "127.0.0.1",
+        "port": 5984
+    }
+}
