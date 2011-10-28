@@ -1,0 +1,92 @@
+body{margin:0 auto;padding:0:border:none}
+
+/* hbox and vbox classes */
+ 
+.hbox{
+display: -webkit-box;
+-webkit-box-orient: horizontal;
+-webkit-box-align: stretch;
+
+display: -moz-box;
+-moz-box-orient: horizontal;
+-moz-box-align: stretch;
+
+display: box;
+box-orient: horizontal;
+box-align: stretch;
+}
+ 
+.hbox > *{
+-webkit-box-flex: 0;
+-moz-box-flex: 0;
+box-flex: 0;
+display: block;
+}
+ 
+.vbox{
+display: -webkit-box;
+-webkit-box-orient: vertical;
+-webkit-box-align: stretch;
+
+display: -moz-box;
+-moz-box-orient: vertical;
+-moz-box-align: stretch;
+
+display: box;
+box-orient: vertical;
+box-align: stretch;
+}
+ 
+.vbox > *{
+-webkit-box-flex: 0;
+-moz-box-flex: 0;
+box-flex: 0;
+display: block;
+}
+
+.spacer{
+-webkit-box-flex: 1;
+-moz-box-flex: 1;
+box-flex: 1;
+}
+
+.vbox.start, .hbox.start{
+-webkit-box-pack: start;
+-moz-box-pack: start;
+box-pack: start;
+}
+
+.vbox.end, .hbox.end{
+-webkit-box-pack: end;
+-moz-box-pack: end;
+box-pack: end;
+}
+
+.vbox.center, .hbox.center{
+-webkit-box-pack: center;
+-moz-box-pack: center;
+box-pack: center;
+}
+
+.header{
+height:30px;
+background-image:linear-gradient(bottom, #75c6e6 0%, #CEF4FF 100%);
+background-image:-moz-linear-gradient(bottom, #75c6e6 0%, #CEF4FF 100%);
+background-image:-webkit-linear-gradient(bottom, #75c6e6 0%, #CEF4FF 100%);
+}
+
+.header .logo{
+width:60px;
+border-right:groove 2px #777;
+height:100%;
+}
+
+.header .settings{
+width:35px;
+border-left:groove 2px #777;
+height:100%;
+}
+
+.header .root{
+height:100%;
+}

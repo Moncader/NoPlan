@@ -4,13 +4,18 @@
         <title>NoPlan</title>
         <link type="text/css" rel="stylesheet" href="/styles/default/theme.css" />
         <script type="text/javascript" src="/js/noplan_browser.js"></script>
+        <script type="text/javascript">
+        //<![CDATA[
+        Greg.onReady(function(){PLAN = new NoPlan(location.pathname.split('/plans/')[1], document.getElementsByTagName('body')[0])});
+        //]]>
+        </script>
     </head>
     <body>
-        <div id="header">
-            <div class="logo"></div>
-            <div class="root_select"></div>
-            <div class="settings"</div>
+        <div class="header hbox ">
+            <div class="logo">Logo</div>
+            <div class="root_select spacer"></div>
+            <div class="settings">S</div>
         </div>
-        <div id="main"></div>
+        <div class="main"></div>
     </body>
 </html>

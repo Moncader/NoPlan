@@ -48,7 +48,7 @@ Plan.prototype.import = function(pData) {
     });
 }
 
-Plan.prototype.get = function(pId, pGetChildren, pOnSuccess, pOnError) {
+Plan.prototype.getNode = function(pId, pGetChildren, pOnSuccess, pOnError) {
     var self = this;
     this.db.get(pId, null, function(err, res) {
         if (err && pOnError) pOnError(err, res);

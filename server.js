@@ -44,8 +44,25 @@ function requestHandler(pRequest, pResponse) {
                             pResponse.writeHead(500, "Couldn't find plan template!");
                             pResponse.end();
                         }
+                    } else if (pRequest.method === 'POST' && path[3] === 'api') {
+                    	var data = '';
+                    	pRequest.on('data', function(d) {
+                    		data += d.toString();
+                    	});
+                    	pRequest.on('end', function() {
+							try {
+								data = JSON.parse(data);
+							} catch (e) {
+								console.error(e);
+								pResponse.writeHead(500, "Couldn't parse JSON data!");
+								pResponse.end();
+								return;
+							}
+							handleApi(pResponse, mPlanUrls[planPath], data);
+                    	});
                     } else {
-
+                    	pResponse.writeHead(404);
+                    	pResponse.end();
                     }
                 }
                 break;
@@ -95,6 +112,118 @@ function requestHandler(pRequest, pResponse) {
                 break;
         }
     }
+}
+
+function handleApi(pResponse, pPlan, pData) {
+	if (pData instanceof Array) {
+		res = [];
+		for (var i = 0, il = pData.length; i < il; i++) { // TODO
+			res.push(getApiResponse(pPlan, pData[i]));
+		}
+	} else {
+		getApiResponse(pPlan, pData, function(data) {
+			try {
+				pResponse.writeHead(200, {'Content-Type': 'application/json'});
+				pResponse.end(JSON.stringify(data));
+			} catch (e) {
+				console.error(e);
+				pResponse.writeHead(500, "Couldn't stringify JSON data!");
+				pResponse.end();
+			}
+		});
+	}
+}
+
+var apiHandlers = {
+	'p': getApiPlanResponse,
+	'n': getApiNodeResponse
+};
+
+function getApiResponse(pPlan, pData, handler) {
+	if (pData.o in apiHandlers) apiHandlers[pData.o](pPlan, pData, handler);
+	else handler(null);
+}
+
+function getApiPlanResponse(pPlan, pData, handler) {
+	switch (pData.m) {
+		case 'get':
+			handler({
+				id: pPlan.id,
+				name: pPlan.name,
+				description: pPlan.description,
+				locales: pPlan.locales,
+				urlPath: pPlan.urlPath
+			});
+			break;
+		case 'getNode':
+			pPlan.getNode(
+				pData.id,
+				true,
+				function(node) {
+					delete node.plan;
+					for (var i = 0, il = node.children.length; i < il; i++) {
+						delete node.children[i].plan;
+					}
+					handler(node);
+				},
+				function(err) {
+					handler({e:err});
+				}
+			);
+			break;
+		case 'searchByType':
+			pPlan.searchByType(
+				pData.type,
+				true,
+				function(nodes) {
+					for (var i = 0, il = nodes.length; i < il; i++) {
+						delete nodes[i].plan;
+					}
+					handler(nodes);
+				},
+				function(err) {
+					handler({e:err});
+				}
+			);
+			break;
+		case 'searchByTitle':
+			pPlan.searchByTitle(
+				pData.title,
+				true,
+				function(nodes) {
+					for (var i = 0, il = nodes.length; i < il; i++) {
+						delete nodes[i].plan;
+					}
+					handler(nodes);
+				},
+				function(err) {
+					handler({e:err});
+				}
+			);
+			break;
+		case 'searchByTitleInType':
+			pPlan.searchByTitleInType(
+				pData.type,
+				pData.title,
+				true,
+				function(nodes) {
+					for (var i = 0, il = nodes.length; i < il; i++) {
+						delete nodes[i].plan;
+					}
+					handler(nodes);
+				},
+				function(err) {
+					handler({e:err});
+				}
+			);
+			break;
+		default:
+			handler(null);
+	}
+}
+
+function getApiNodeResponse(pPlan, pData, handler) {
+
 }
 
 console.log("Starting server up at " + mNoPlanSettings.server.host + ":" + mNoPlanSettings.server.port + "...");
