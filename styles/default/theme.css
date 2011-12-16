@@ -90,3 +90,36 @@ height:100%;
 .header .root{
 height:100%;
 }
+
+.main{
+text-align:center;
+}
+
+.hidden{
+opacity:0 !important;
+}
+
+.node{
+display:inline-block;
+border:solid 2px #777;
+margin:20px;
+padding:15px;
+width:230px;
+height:75px;
+background-image:linear-gradient(bottom, #EEE 0%, #DDD 100%);
+background-image:-moz-linear-gradient(bottom, #EEE 0%, #DDD 100%);
+background-image:-webkit-linear-gradient(bottom, #EEE 0%, #DDD 100%);
+border-radius:5px;
+-webkit-border-radius:5px;
+-moz-border-radius:5px;
+-webkit-transition-duration:0.5s;
+-webkit-transition-property:opacity;
+}
+
+.node.full{
+display:block;
+width:300;
+height:100px;
+border-width:3px;
+}
+

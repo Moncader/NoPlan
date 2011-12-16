@@ -38,7 +38,7 @@ var $ = new (function() {
 		return $;
 	};
 	
-	this.create = function(n, a, c, p, xns) {
+	this.create = function(n, a, c, p, cb, xns) {
 		var r = (xns && doc.createElementNS ? doc.createElementNS(xns, n) : doc.createElement(n));
 		if (a) {
 			for (var i in a) {
@@ -68,15 +68,22 @@ var $ = new (function() {
 				}
 			}
 		}
-		if (c) {
-			for (var i = 0, l = c.length; i < l; i++) {
-				r.appendChild(c[i]);
-			}
-		}
 		if (p) {
 			for (var i in p) {
 				if (!p.hasOwnProperty(i)) continue;
 				r[i] = p[i];
+			}
+		}
+        if (cb) {
+            cb.call(r);
+        }
+		if (c) {
+			for (var i = 0, l = c.length; i < l; i++) {
+                if (typeof c[i] === "string") {
+                    r.appendChild(document.createTextNode(c[i]));
+                } else {
+				    r.appendChild(c[i]);
+                }
 			}
 		}
 		return r;
@@ -946,39 +953,88 @@ Greg = $;
 	}
 	
 	Plan.prototype.getNode = function(pId) {
-		return $.json('/plans/' + this.id + '/api', {
+        var self = this;
+        var tDelay = new $.Delay();
+		$.json('/plans/' + this.id + '/api', {
 			o: 'p', //plan
 			m: 'getNode',
 			id: pId
-		});
+		})
+        .on('success', function(d) {
+            tDelay.resolve(self.createNodesFromJson(d.data)[0]);
+        })
+        .on('error', function(d){tDelay.error(d)});
+        return tDelay;
 	}
-	
+
+    Plan.prototype.createNodesFromJson = function(pData) {
+        var self = this;
+        if (!$.isArray(pData)) pData = [pData];
+        var tNodes = [];
+        pData.forEach(function(pNode) {
+            var tPN = new PlanNode(self, pNode._id, pNode.type);
+            tPN.titles = pNode.titles;
+            var tChildren = pNode.children;
+            for (var i = 0, il = tChildren.length; i < il; i++) {
+                if (typeof tChildren[i] !== "string") {
+                    tChildren[i] = self.createNodesFromJson([tChildren[i]])[0];
+                }
+            }
+            tPN.children = tChildren;
+            tPN.data = pNode.data;
+            tNodes.push(tPN);
+        });
+        return tNodes;
+    }
+
 	Plan.prototype.searchByType = function(pType) {
-		return $.json('/plans/' + this.id + '/api', {
+        var self = this;
+        var tDelay = new $.Delay();
+		$.json('/plans/' + this.id + '/api', {
 			o: 'p', //plan
 			m: 'searchByType',
 			type: pType
-		});
+		})
+        .on('success', function(d) {
+            tDelay.resolve(self.createNodesFromJson(d.data));
+        })
+        .on('error', function(d){tDelay.error(d)});
+        return tDelay;
 	}
 	
 	Plan.prototype.searchByTitle = function(pTitle) {
-		return $.json('/plans/' + this.id + '/api', {
+        var self = this;
+        var tDelay = new $.Delay();
+		$.json('/plans/' + this.id + '/api', {
 			o: 'p', //plan
 			m: 'searchByTitle',
 			title: pTitle
-		});
+		})
+        .on('success', function(d) {
+            tDelay.resolve(self.createNodesFromJson(d.data));
+        })
+        .on('error', function(d){tDelay.error(d)});
+        return tDelay;
 	}
 	
 	Plan.prototype.searchByTitleInType = function(pType, pTitle) {
-		return $.json('/plans/' + this.id + '/api', {
+        var self = this;
+        var tDelay = new $.Delay();
+		$.json('/plans/' + this.id + '/api', {
 			o: 'p', //plan
 			m: 'searchByTitleInType',
 			type: pType,
 			title: pTitle
-		});
+		})
+        .on('success', function(d) {
+            tDelay.resolve(self.createNodesFromJson(d.data));
+        })
+        .on('error', function(d){tDelay.error(d)});
+        return tDelay;
 	}
 
-	function PlanNode(pPlan, pType, pTitle) {
+	function PlanNode(pPlan, pId, pType, pTitle) {
+        this.id = pId;
 		this.plan = pPlan;
 		this.type = pType;
 		this.titles = {};
@@ -1010,14 +1066,188 @@ Greg = $;
 		
 		this.nodes = {};
 		this.currentNode = null;
-		
+		this.defaultRenderer = null;
+
+        var renderers = {};
+
+        this.addTypeRenderer = function(pType, pRenderer) {
+            renderers[pType] = pRenderer;
+        }
+        this.removeTypeRenderer = function(pType) {
+            delete renderers[pType];
+        }
+        this.render = function(pNode, pFull) {
+            if (!(pNode.type in renderers)) {
+                if (self.defaultRenderer !== null) {
+                    return self.defaultRenderer(pNode, pFull);
+                } else {
+                    console.error("No renderer for node: " + pNode.type);
+                }
+            } else {
+                return renderers[pNode.type](pNode, pFull);
+            }
+        }
+        var mOnReady = null;
+        this.onReady = function(f) {
+            if (self.plan !== null) f(self);
+            else mOnReady = f;
+        }
+        this.baseStack = [];
+
 		Plan.get(pPlanUrl)
 		.on('success', function(d) {
 			self.plan = d;
+            d.NoPlan = self;
+            if (mOnReady) mOnReady(self);
 		})
 		.on('error', function(d) {
 			console.error(d);
 		});
 	};
+
+    NoPlan.defaultActionHandler = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var tNode = this.NOPLAN_NODE;
+        NoPlan.loadNode(tNode);
+    }
+
+    NoPlan.loadNode = function(pNode, pWithoutHistory) {
+        pNode.plan.getNode(pNode.id)
+        .on('success', function(pNode) {
+            var tNoPlan = pNode.plan.NoPlan;
+            if (!pWithoutHistory && pNode.plan.currentNode) pNode.plan.NoPlan.baseStack.push(pNode.plan.currentNode);
+            pNode.plan.currentNode = pNode;
+            $.emptyNode(tNoPlan.container);
+            var tElement = tNoPlan.render(pNode, true);
+            tElement.classList.add('hidden');
+            tNoPlan.container.appendChild(tElement);
+            setTimeout(function(d) {d.classList.remove('hidden');}, 0, tElement);
+            for (var i = 0, il = pNode.children.length; i < il; i++) {
+                var tElement = tNoPlan.render(pNode.children[i], false);
+                tElement.classList.add('hidden');
+                tNoPlan.container.appendChild(tElement);
+                setTimeout(function(d) {d.classList.remove('hidden');}, 0, tElement);
+            }
+        })
+        .on('error', function() {console.error(arguments)});
+    }
+
+    NoPlan.loadRoot = function(pNoPlan, pType) {
+        $.emptyNode(pNoPlan.container);
+
+        pNoPlan.plan.searchByType(pType)
+        .on("success", function(d) {
+            for (var i = 0, il = d.length; i < il; i++) {
+                var tElement = pNoPlan.render(d[i], false);
+                tElement.classList.add('hidden');
+                pNoPlan.container.appendChild(tElement);
+                setTimeout(function(d) {d.classList.remove('hidden');}, 0, tElement);
+            }
+        })
+        .on("error", function(e){console.error(e)});
+    }
+})(Greg);
+
+
+(function($){
+
+
+var defaultRenderer = function(pNode, pFull) {
+    if (pFull) {
+        return $.create('div', {class: 'node full hidden'}, [
+                $.create('div', {class: 'title'}, [
+                    pNode.title
+                ])
+            ]
+        );
+    } else {
+        return $.create('div', {class: 'node hidden'}, [
+                $.create('div', {class: 'title'}, [
+                    pNode.title
+                ]),
+                $.create('div', {class: 'children'}, [
+                    "Children: " + pNode.children.length
+                ])
+            ], null,
+            function() {
+                this.NOPLAN_NODE = pNode;
+                this.addEventListener('click', NoPlan.defaultActionHandler, false);
+            }
+        );
+    }
+}
+
+var mRoots = [
+    'task',
+    'user',
+    'feature',
+    'bug'
+];
+
+var searchInType = function(pNoPlan, pType, pKeyWords) {
+    $.emptyNode(pNoPlan.container);
+
+    pNoPlan.plan.searchByTitleInType(pType, pKeyWords)
+    .on("success", function(d) {
+        for (var i = 0, il = d.length; i < il; i++) {
+            var tElement = pNoPlan.render(d[i], false);
+            tElement.classList.add('hidden');
+            pNoPlan.container.appendChild(tElement);
+            setTimeout(function(d) {d.classList.remove('hidden');}, 0, tElement);
+        }
+    })
+    .on("error", function(e){console.error(e)});
+}
+
+
+var mCurrentRootIndex = 0;
+
+$.onReady(function() {
+    PLAN = new NoPlan(location.pathname.split('/plans/')[1], document.getElementsByClassName('main')[0]);
+    PLAN.defaultRenderer = defaultRenderer;
+    PLAN.onReady(function(pNoPlan) {
+        var tRootSelectors = document.getElementsByClassName('root_select');
+        for (var i = 0, il = tRootSelectors.length; i < il; i++) {
+            var tSelector = tRootSelectors[i].children[0];
+            for (var j = 0, jl = mRoots.length; j < jl; j++) {
+                tSelector.add($.create('option', null, null, {text: mRoots[j], value: mRoots[j]}));
+            }
+            tSelector.addEventListener('change', function() {
+                mCurrentRootIndex = this.selectedIndex;
+                NoPlan.loadRoot(pNoPlan, mRoots[this.selectedIndex]);
+            }, false);
+        }
+
+        NoPlan.loadRoot(pNoPlan, mRoots[0]);
+
+        var tSearches = document.getElementsByClassName('search');
+        for (var i = 0, il = tSearches.length; i < il; i++) {
+            tSearches[i].children[0].addEventListener('keyup', function(e) {
+                if (e.keyCode === 13) {
+                    if (this.value === "") NoPlan.loadRoot(pNoPlan, mRoots[mCurrentRootIndex]);
+                    else searchInType(pNoPlan, mRoots[mCurrentRootIndex], this.value);
+                }
+            }, false);
+        }
+
+        document.addEventListener('keydown', function(e) {
+            switch (e.keyCode) {
+                case 27: // escape
+                    pNoPlan.baseStack.length = 0;
+                    NoPlan.loadRoot(pNoPlan, mRoots[mCurrentRootIndex]);
+                    e.preventDefault();
+                    break;
+                case 8: //backspace
+                    e.preventDefault();
+                    e.stopPropagation();
+                    var tItem = pNoPlan.baseStack.pop();
+                    if (tItem) NoPlan.loadNode(tItem, true);
+                    else NoPlan.loadRoot(pNoPlan, mRoots[mCurrentRootIndex]);
+                    break;
+            }
+        }, false);
+    });
+});
 
 })(Greg);
