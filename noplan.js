@@ -34,8 +34,8 @@ Plan.prototype.load = function(pOnSuccess, pOnError) {
     return this;
 }
 
-Plan.prototype.destroy = function() {
-    this.db.destroy();
+Plan.prototype.destroy = function(pCallback) {
+    this.db.destroy(pCallback);
     return this;
 }
 
